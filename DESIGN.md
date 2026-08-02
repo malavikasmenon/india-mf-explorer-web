@@ -408,8 +408,37 @@ The `mutualfund` PyPI package was evaluated and skipped — three commits on mai
 thin for the core data path, and it wraps away the section-header hierarchy, which
 is precisely the part that carries the dimensional data.
 
+### Build state — 2026-08-03
+
+**Done: the manifest.** `pipeline/build_manifest.py` writes `data/manifest.json`,
+the published index of the dataset. Types, row counts and file lists are measured
+from the Parquet at build time; the prose (grain, column descriptions, source
+field) lives in `pipeline/dictionary.py`. A table or column with no prose still
+publishes with its types, so documentation is an enrichment and never a gate.
+
+This is the `manifest.json` §7 anticipated, and it settles **§12.5** — its `files`
+array is the explicit partition enumeration that stands in for the glob a public
+bucket can't support. `nav` will list its monthly partitions there and need no new
+logic on either side.
+
+**Done: the web workbench.** `web/` — Vue 3 + Vite + DuckDB-WASM. Data dictionary
+rail, CodeMirror SQL editor with completions fed from the manifest, TanStack
+results grid. It contains no table name, column name or file path: it fetches the
+manifest and registers `CREATE VIEW` per table, so `FROM mf` works and a new table
+appears with zero frontend changes. Verified by adding a throwaway second table
+and confirming it listed, queried and joined without a code edit.
+
+Verified in Chrome against the counts above, not assumed: 14,222 / 52 / 86, the 12
+`IL&FS Mutual Fund (IDF)` rows, and 9,702 NULL `isin_div_reinvestment` rendering
+as visible NULLs rather than blanks. Queries run in 7–21 ms with zero console
+errors. Full-table `SELECT *` reports the true 14,222 while rendering 1,000 — the
+user's SQL is never rewritten.
+
+⚠️ **Node ≥ 20.19 is required** (Vite 7+). `web/.nvmrc` pins 26.
+
 **Next: `nav`.** The 90-day history file is fetched and sitting on disk. It needs
-its own parser (§5.5), then monthly Parquet partitions.
+its own parser (§5.5), then monthly Parquet partitions. `build_manifest.py`
+already discovers `data/nav/*.parquet` as one table, so the frontend needs nothing.
 
 ---
 
@@ -520,15 +549,28 @@ concentration screening.
 3. **Send the AMFI email?** Costs one email; a "yes" removes the whole question.
 4. **Benchmark index data licensing** — NSE/BSE terms are murky. Affects any
    "beat the benchmark" feature.
-5. **Does `read_parquet` glob over plain HTTPS?** Believed **no** — globbing needs
-   a listable filesystem, and a public R2 bucket over HTTPS can't list. If so the
-   browser must enumerate partitions explicitly, which means publishing a
-   `manifest.json` and makes it part of the stable-URL contract in §7. Cheap to
-   test; do it before designing the URL scheme.
-6. **Are R2's CORS and `Range` headers configured correctly?** DuckDB-WASM reads
+5. ~~**Does `read_parquet` glob over plain HTTPS?**~~ **Sidestepped, not answered.**
+   `data/manifest.json` enumerates each table's files explicitly, so the browser
+   never needs to glob. See §8. Whether globbing would have worked is now moot.
+6. **Vendor DuckDB's Parquet extension?** Discovered 2026-08-03 while debugging a
+   stuck loading screen: DuckDB-WASM fetches
+   `https://extensions.duckdb.org/v1.5.4/wasm_eh/parquet.duckdb_extension.wasm`
+   **at startup**, every session. So "queries run on your machine, nothing is
+   sent to a server" is not quite true, and the app cannot boot offline or behind
+   a proxy that blocks that host. Verified by blocking it: DuckDB reports only
+   `function signature mismatch`, and when the host is slow rather than blocked
+   nothing settles at all.
+
+   `web/src/duckdb.ts` now bounds the wait and explains the failure, but that
+   makes it *diagnosable*, not *fixed*. The real fix is serving the extension
+   ourselves via `custom_extension_repository`, which means vendoring a file
+   whose path is pinned to DuckDB's version (`v1.5.4/wasm_eh/…`) and re-vendoring
+   on every `@duckdb/duckdb-wasm` bump. Worth doing before the demo — a CDN blip
+   during judging kills the whole app.
+7. **Are R2's CORS and `Range` headers configured correctly?** DuckDB-WASM reads
    the Parquet footer then fetches row groups by byte range. If the bucket doesn't
    expose `Content-Length` / `Content-Range` / `Accept-Ranges` cross-origin, it
    either silently downloads whole files or fails — and the error won't mention
    CORS. This is the most common way this architecture breaks. Verify early.
-7. **Provenance per row, or per ingest?** See §8. Affects whether §4's
+8. **Provenance per row, or per ingest?** See §8. Affects whether §4's
    "every column verbatim" survives as stated.
