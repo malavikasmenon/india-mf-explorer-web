@@ -1,0 +1,125 @@
+/* Palette is taken verbatim from the wireframe (DESIGN.md §9): a soft sage page
+   with white surfaces, ochre accent, and green/rust reserved for semantics.
+   Mono carries labels, identifiers, data and SQL. */
+:root {
+  --bg: #f2f4f2;
+  --surface: #ffffff;
+  --surface-2: #eaeeeb;
+  --ink: #14201c;
+  --muted: #5c6b64;
+  --line: #d9dfda;
+  /* One step darker, for the rule that separates headers from data. */
+  --line-strong: #bcc7be;
+  --accent: #b0731a;
+  --accent-soft: rgba(176, 115, 26, 0.12);
+  --pos: #17694e;
+  --pos-soft: rgba(23, 105, 78, 0.12);
+  --neg: #9c3a2c;
+  --neg-soft: rgba(156, 58, 44, 0.12);
+  --on-accent: #ffffff;
+
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+  --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+
+  --radius: 4px;
+  --rail: 292px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1512;
+    --surface: #131e1a;
+    --surface-2: #1a2622;
+    --ink: #e8ede9;
+    --muted: #8fa098;
+    --line: #24332c;
+    --line-strong: #3a4d43;
+    --accent: #e0a344;
+    --accent-soft: rgba(224, 163, 68, 0.14);
+    --pos: #4bb68c;
+    --pos-soft: rgba(75, 182, 140, 0.14);
+    --neg: #d2705c;
+    --neg-soft: rgba(210, 112, 92, 0.14);
+    --on-accent: #101a16;
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+/* Sticky footer: a short result must not leave the footer stranded mid-screen
+   with page background below it. The shell takes the slack instead. */
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+/* Bordered white card — the one container this UI uses, everywhere. */
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}

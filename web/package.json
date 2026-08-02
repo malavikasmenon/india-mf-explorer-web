@@ -1,0 +1,33 @@
+{
+  "name": "open-indian-fund-data-web",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "scripts": {
+    "sync-data": "mkdir -p public/data && cp -r ../data/manifest.json ../data/*.parquet public/data/",
+    "dev": "npm run sync-data && vite",
+    "build": "npm run sync-data && vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.19.0",
+    "@codemirror/commands": "^6.9.0",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/language": "^6.12.4",
+    "@lezer/highlight": "^1.2.1",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.39.1",
+    "@duckdb/duckdb-wasm": "1.33.1-dev57.0",
+    "@tanstack/vue-table": "^8.21.3",
+    "vue": "^3.5.40"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.8",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.0",
+    "vue-tsc": "^3.1.1"
+  }
+}
