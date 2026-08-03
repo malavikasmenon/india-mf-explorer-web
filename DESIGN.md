@@ -77,6 +77,14 @@ judging is cumulative — having both scores better than having one.
 
 ## 4. Phase 1 schema — two tables, raw only
 
+> **Naming, settled 2026-08-03.** The dimension table is **`schemes`**, not `mf`
+> or `mutual_funds`. Plural, per the prevailing SQL/warehouse convention that a
+> table is named for the set it holds. Not "funds", because the grain is one row
+> per *scheme code* — a single fund routinely has four or more, being the
+> Direct/Regular × Growth/IDCW variants. Naming it for funds would bake a wrong
+> grain into the name and collide with the fund-level grouping `portfolio_key`
+> introduces in phase 2 (§10). AMFI and SEBI both say "scheme".
+
 Every column is published by AMFI verbatim. Nothing parsed out of name strings,
 nothing computed.
 
@@ -91,7 +99,7 @@ violation as a failed build, not a warning.
 
 ```sql
 -- one row per AMFI scheme code
-CREATE TABLE mf (
+CREATE TABLE schemes (
   scheme_code             INTEGER PRIMARY KEY,  -- row field 1
   isin_div_payout_growth  VARCHAR,              -- row field 2
   isin_div_reinvestment   VARCHAR,              -- row field 3
@@ -102,10 +110,10 @@ CREATE TABLE mf (
 );
 
 -- one row per scheme per day
--- Sourced from the history export, so field numbers differ from mf above:
+-- Sourced from the history export, so field numbers differ from schemes above:
 --                                    NAVAll.txt | history export
 CREATE TABLE nav (
-  scheme_code INTEGER NOT NULL REFERENCES mf(scheme_code),  -- field 1 | field 1
+  scheme_code INTEGER NOT NULL REFERENCES schemes(scheme_code),  -- field 1 | field 1
   nav_date    DATE    NOT NULL,               -- DD-Mon-YYYY, field 6 | field 8
   nav         DECIMAL(18,5),                  --              field 5 | field 5
   PRIMARY KEY (scheme_code, nav_date)
@@ -222,48 +230,38 @@ Per SEBI (`sebi.gov.in/sebi_data/commondocs/cirimd05_h.html`):
 have passed, so one pass gets a fully settled day. A midnight run
 systematically misses every fund-of-funds.
 
-### 5.5 Historical NAV — verified 2026-08-02
+### 5.5 Historical NAV — ❌ the AMFI bulk export does not work
 
-`https://portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx?frmdt=01-May-2026&todt=30-Jul-2026`
+**Retracted 2026-08-03.** The earlier entry here recorded
+`https://portal.amfiindia.com/DownloadNAVHistoryReport_Po.aspx?frmdt=…&todt=…`
+as verified live returning `text/plain`, 60,657,474 bytes in 42s, and the whole
+`nav` plan was built on it. **That result does not reproduce, and the endpoint
+appears never to have worked this way.** What it actually returns:
 
-One live request, 90-day window, no `mf` or `tp` params:
-**HTTP 200, `text/plain`, 60,657,474 bytes, 42s.**
+- Every GET — with `frmdt`/`todt`, with `tp=1`, with `mf=`, with a session
+  cookie, with none — returns the page's own **HTML form**, `text/html`,
+  13,694 bytes, in ~15s. Never data.
+- The page is an ASP.NET WebForms postback: `__VIEWSTATE` + `__EVENTVALIDATION`
+  + `ctl00$amfiHomeContent$btnViewReport`. Query parameters are not read.
+- It is also **broken server-side** and not merely awkward: the "Select Mutual
+  Fund" `<select>` renders with **zero `<option>` elements**, and there is only
+  one date input (`txtFrmDate`) — no to-date, so it is not a range export at
+  all. Its own JS enforces `ValidateOneMonthPeriod`.
+- A bare GET 302s to `https://www.amfiindia.com/nav-history-download`, which
+  **404s**.
 
-- Dates as `DD-MMM-YYYY`
-- **Capped at 90 days per request**, but returns all schemes at once
-- Omitting `mf` / `tp` returns everything — the params are unnecessary, not
-  ambiguous. Nothing else about them was tested.
-- 5 years ≈ **21 requests**. Compare: mfapi is one call per scheme ≈ **14,000
-  requests**. Use AMFI bulk for backfill, mfapi to gap-fill individual schemes.
-- Budget ~60 MB and ~40s **per quarter** — a 5-year backfill is roughly 1.2 GB
-  of raw download. Fine, but not something to re-run casually.
+Do not spend time on this again without first checking whether the AMC dropdown
+has options. Everything downstream of it is blocked until it does.
 
-**✅ It does include the section headers** (resolves the open question in §12.1).
-One request gives you both tables — no `NAVAll.txt` snapshot needed to recover
-`fund_house` / `scheme_category`.
+⚠️ The most likely explanation is that the original "verification" was a
+WebFetch that returned a plausible-looking summary rather than a real HTTP
+result — note that §5.3 carries the same warning about WebFetch truncating this
+host. **Treat any source fact in this document that was not produced by a
+locally-run request as unverified.**
 
-⚠️ **This file is not shaped like `NAVAll.txt`.** It needs its own parser; the
-§5.2 rules transfer but the field positions do not.
-
-```
-Scheme Code;Scheme Name;ISIN Div Payout/ISIN Growth;ISIN Div Reinvestment;Net Asset Value;Repurchase Price;Sale Price;Date
-
-Open Ended Schemes ( Money Market )
-
-Taurus Mutual Fund
-139619;Taurus Investor Education Pool - Unclaimed Dividend - Growth;;;10.0000;;;04-May-2026
-```
-
-| | `NAVAll.txt` | history export |
-|---|---|---|
-| fields | 6 | **8** (adds Repurchase Price, Sale Price) |
-| `Scheme Name` | field 4 | **field 2** |
-| absent ISIN | `-` | **empty string** |
-| header spacing | `Schemes(Money Market)` | `Schemes ( Money Market )` — **trim both sides** |
-| row order | grouped by section | scheme-major: all dates for one scheme consecutively |
-
-The `-` → `NULL` rule in §4 was written for `NAVAll.txt`. Here the same absence
-is an empty string, so both must map to `NULL`.
+**Consequence:** the backfill uses mfapi (§5.6) instead. AMFI's `NAVAll.txt`
+remains the source for `schemes` and for the daily `nav` append, so ongoing data
+is still first-party; only history is mirrored.
 
 ### 5.6 mfapi is NAVAll.txt parsed — nothing more
 
@@ -286,6 +284,22 @@ that column serves both payout and growth variants. **Keep AMFI's naming.**
 
 Endpoints: `/mf/search?q=`, `/mf?limit=&offset=`, `/mf/{code}?startDate=&endDate=`,
 `/mf/{code}/latest`. No auth, states no rate limiting.
+
+**Promoted to the backfill source 2026-08-03**, since §5.5 has no working
+alternative. `/mf/{code}` returns that scheme's full history since inception.
+Measured over 40 randomly sampled schemes at concurrency 8: **18.6 req/s, 40/40
+succeeded, ~65 KB and ~1,660 NAV points each** → ~13 minutes and ~0.93 GB for
+all 14,222 schemes. One call per scheme is unavoidable; there is no bulk
+endpoint.
+
+⚠️ **The licensing problem in §6 is now load-bearing, not theoretical.** mfapi
+states no license and will not name its source, and it is now upstream of every
+historical row this project republishes. Two ways out, neither taken yet:
+migrate the backfill to `captn3m0/historical-mf-data` (**MIT**, redistributable,
+but no type/category — those would still come from AMFI's headers), or publish
+`nav` history only as a derived artefact with the provenance stated. Until one
+is chosen, the `nav` backfill is fine to query locally and **not clearly safe to
+republish**. `schemes` and the daily append are unaffected — they are AMFI-direct.
 
 ### 5.7 AMC naming conventions diverge — this is why phase 2 is separate
 
@@ -379,7 +393,7 @@ browser loads.
 
 **Sample first, then scale.**
 
-1. Pull **3 months** of data. `mf` = **14,222 rows** (measured, not estimated);
+1. Pull **3 months** of data. `schemes` = **14,222 rows** (measured, not estimated);
    `nav` ≈ 900,000 rows; ~5–15 MB as Parquet. Ideal dev size — performance
    problems are real, reloads are instant, fits DuckDB-WASM with no pagination
    tricks.
@@ -390,18 +404,18 @@ browser loads.
 
 ### Build state — 2026-08-02
 
-**Done: `mf`.** `pipeline/amfi.py` fetches and parses `NAVAll.txt`;
-`pipeline/build_mf.py` loads it into DuckDB with the §4 constraints on, validates,
-and writes `data/mf.parquet` (14,222 rows, 253 KB zstd, sorted by `scheme_code`).
+**Done: `schemes`.** `pipeline/amfi.py` fetches and parses `NAVAll.txt`;
+`pipeline/build_schemes.py` loads it into DuckDB with the §4 constraints on, validates,
+and writes `data/schemes.parquet` (14,222 rows, 253 KB zstd, sorted by `scheme_code`).
 
 Verified after the build, not assumed: all 12 `IL&FS Mutual Fund (IDF)` rows carry
 the correct fund house; zero `fund_house` values contain "Schemes"; NULL count is
 exactly 10,503, matching the dash count in source, with no dashes leaking through;
 a spot-checked row matches the raw bytes including a double space inside the name.
 
-Provenance goes to a `data/mf.ingest.json` sidecar rather than into `mf` columns,
+Provenance goes to a `data/schemes.ingest.json` sidecar rather than into `schemes` columns,
 which keeps §4's "every column verbatim" true. **Open:** the README promises
-provenance *per row* — if that's meant literally, `mf` needs `source_file` and
+provenance *per row* — if that's meant literally, `schemes` needs `source_file` and
 `retrieved_at` columns and §4's principle needs rewording.
 
 The `mutualfund` PyPI package was evaluated and skipped — three commits on main is
@@ -424,7 +438,7 @@ logic on either side.
 **Done: the web workbench.** `web/` — Vue 3 + Vite + DuckDB-WASM. Data dictionary
 rail, CodeMirror SQL editor with completions fed from the manifest, TanStack
 results grid. It contains no table name, column name or file path: it fetches the
-manifest and registers `CREATE VIEW` per table, so `FROM mf` works and a new table
+manifest and registers `CREATE VIEW` per table, so `FROM schemes` works and a new table
 appears with zero frontend changes. Verified by adding a throwaway second table
 and confirming it listed, queried and joined without a code edit.
 
@@ -436,9 +450,9 @@ user's SQL is never rewritten.
 
 ⚠️ **Node ≥ 20.19 is required** (Vite 7+). `web/.nvmrc` pins 26.
 
-**Next: `nav`.** The 90-day history file is fetched and sitting on disk. It needs
-its own parser (§5.5), then monthly Parquet partitions. `build_manifest.py`
-already discovers `data/nav/*.parquet` as one table, so the frontend needs nothing.
+**Correction:** an earlier version of this line claimed "the 90-day history file
+is fetched and sitting on disk." It never was — `data/raw/` held only the
+`NAVAll.txt` snapshot. See §5.5 for what the history endpoint actually does.
 
 ---
 
@@ -537,7 +551,7 @@ concentration screening.
 
 - ~~**Does the history endpoint return section headers?**~~ **Yes.** One request
   gives both tables. See §5.5.
-- ~~**What's the real row count for `mf`?**~~ **14,222** schemes, 52 fund houses,
+- ~~**What's the real row count for `schemes`?**~~ **14,222** schemes, 52 fund houses,
   3 scheme types, 86 categories, zero duplicate scheme codes. See §5.1.
 
 ### Still open

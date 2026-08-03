@@ -75,6 +75,12 @@ onMounted(async () => {
   }
 });
 
+/** Clearing drops the example highlight too — nothing on screen came from it now. */
+function clearEditor() {
+  sql.value = '';
+  activeExample.value = null;
+}
+
 function pick(example: TableExample) {
   sql.value = example.sql;
   activeExample.value = example.label;
@@ -138,6 +144,7 @@ async function run() {
           :schema="schema"
           :running="running"
           @run="run"
+          @clear="clearEditor"
         />
         <ExampleQueries :examples="examples" :active="activeExample" @pick="pick" />
         <ResultsGrid :result="result" :error="error" :running="running" />

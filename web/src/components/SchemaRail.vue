@@ -34,7 +34,9 @@ function compact(n: number): string {
           <span class="tbl-rows mono">{{ compact(table.row_count) }}</span>
         </header>
 
-        <p v-if="table.grain" class="grain">{{ table.grain }}</p>
+        <!-- One sentence saying what the table is. A bare name plus a column list
+             leaves someone new to guess at the subject matter. -->
+        <p v-if="table.subtitle" class="subtitle">{{ table.subtitle }}</p>
 
         <!-- A grid rather than a table: the name column needs to truncate under
              pressure, and only `minmax(0, 1fr)` makes that reliable while still
@@ -116,8 +118,8 @@ function compact(n: number): string {
   font-variant-numeric: tabular-nums;
 }
 
-.grain {
-  margin: 4px 0 8px;
+.subtitle {
+  margin: 4px 0 9px;
   font-size: 11.5px;
   line-height: 1.4;
   color: var(--muted);

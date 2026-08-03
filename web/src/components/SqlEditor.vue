@@ -25,6 +25,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [value: string];
   run: [];
+  clear: [];
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
@@ -126,6 +127,19 @@ watch(
 
 onBeforeUnmount(() => view?.destroy());
 
+/**
+ * Empty the editor and put the cursor in it. Goes through the document rather
+ * than only the model so the change lands in CodeMirror's undo history — Cmd-Z
+ * brings the query back.
+ */
+function clear() {
+  if (view) {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: '' } });
+    view.focus();
+  }
+  emit('clear');
+}
+
 function insertAtCursor(text: string) {
   if (!view) return;
   const { from, to } = view.state.selection.main;
@@ -151,6 +165,14 @@ defineExpose({ insertAtCursor });
     <div class="foot">
       <button class="run" type="button" :disabled="running" @click="emit('run')">
         {{ running ? 'Running…' : 'Run' }}
+      </button>
+      <button
+        class="clear"
+        type="button"
+        :disabled="!modelValue.trim()"
+        @click="clear"
+      >
+        Clear
       </button>
       <span class="kbd mono">⌘ / Ctrl + ↵</span>
     </div>
@@ -197,6 +219,30 @@ defineExpose({ insertAtCursor });
 
 .run:disabled {
   opacity: 0.55;
+  cursor: default;
+}
+
+/* Secondary: destructive-ish, so it must not compete with Run. */
+.clear {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 7px 16px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.clear:hover:not(:disabled) {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.clear:disabled {
+  opacity: 0.4;
   cursor: default;
 }
 

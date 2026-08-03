@@ -6,7 +6,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "sync-data": "mkdir -p public/data && cp -r ../data/manifest.json ../data/*.parquet public/data/",
+    "sync-data": "mkdir -p public/data/nav && cp ../data/manifest.json ../data/*.parquet public/data/ && cp ../data/nav/*.parquet public/data/nav/",
     "dev": "npm run sync-data && vite",
     "build": "npm run sync-data && vue-tsc --noEmit && vite build",
     "preview": "vite preview",

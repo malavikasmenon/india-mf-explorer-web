@@ -37,9 +37,16 @@ export interface QueryResult {
   rowCount: number;
   truncated: boolean;
   elapsedMs: number;
+  /**
+   * The statement that produced these rows. Kept with the result rather than
+   * read from the editor at export time — otherwise editing the query without
+   * re-running it would export something other than what is on screen.
+   */
+  sql: string;
 }
 
 let connection: duckdb.AsyncDuckDBConnection | null = null;
+let database: duckdb.AsyncDuckDB | null = null;
 
 /**
  * Arrow names types differently from DuckDB — a result column reads back as
@@ -111,7 +118,7 @@ function bootTimeout(): Promise<never> {
  * Boot the engine and expose one view per table in the manifest.
  *
  * The views are what make this feel like a database rather than a file reader:
- * an analyst writes `FROM mf` and never sees a URL, and adding a table upstream
+ * an analyst writes `FROM schemes` and never sees a URL, and adding a table upstream
  * is enough to make it queryable here.
  */
 export async function initDuckDB(manifest: Manifest): Promise<void> {
@@ -124,6 +131,7 @@ async function connect(manifest: Manifest): Promise<void> {
   const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
 
+  database = db;
   connection = await db.connect();
 
   for (const table of manifest.tables) {
@@ -174,5 +182,43 @@ export async function runQuery(sql: string): Promise<QueryResult> {
     rows.push(row);
   }
 
-  return { columns, rows, rowCount, truncated: rowCount > limit, elapsedMs };
+  return { columns, rows, rowCount, truncated: rowCount > limit, elapsedMs, sql };
+}
+
+export type ExportFormat = 'csv' | 'parquet';
+
+const COPY_OPTIONS: Record<ExportFormat, string> = {
+  csv: '(FORMAT csv, HEADER)',
+  parquet: '(FORMAT parquet, COMPRESSION zstd)',
+};
+
+/**
+ * Write the query's results to a file inside DuckDB's virtual filesystem and
+ * hand back the bytes.
+ *
+ * The statement is re-run rather than serialising what the grid holds: the grid
+ * is capped at MAX_RENDERED_ROWS, and an export that silently stopped at 1,000
+ * of 14,222 rows would be worse than no export at all. DuckDB also writes real
+ * Parquet and properly quoted CSV, which is not worth reimplementing in JS.
+ */
+export async function exportQuery(sql: string, format: ExportFormat): Promise<Uint8Array> {
+  if (!connection || !database) throw new Error('The query engine is still starting up.');
+
+  // COPY (SELECT …;) is a syntax error, and trailing semicolons are habitual.
+  const statement = sql.trim().replace(/;\s*$/, '');
+  if (!statement) throw new Error('There is no query to export.');
+
+  const name = `export-${Date.now()}.${format}`;
+  try {
+    await connection.query(`COPY (${statement}) TO '${name}' ${COPY_OPTIONS[format]}`);
+    return await database.copyFileToBuffer(name);
+  } finally {
+    // Best effort: leaving files in the virtual FS would leak memory across
+    // repeated exports, but a failed cleanup must not mask the real error.
+    try {
+      await database.dropFile(name);
+    } catch {
+      /* ignore */
+    }
+  }
 }

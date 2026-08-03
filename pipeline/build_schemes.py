@@ -1,11 +1,11 @@
-"""Build the `mf` dimension table from a NAVAll.txt snapshot.
+"""Build the `schemes` dimension table from a NAVAll.txt snapshot.
 
 Parsing is done in Python because the source is stateful line-by-line; typing,
 validation and output are done in DuckDB so the same SQL dialect runs here and
 in the browser. See DESIGN.md 4 for the schema and 7 for the architecture.
 
-    python -m pipeline.build_mf                 # fetch a fresh snapshot
-    python -m pipeline.build_mf --raw path.txt  # reuse one already on disk
+    python -m pipeline.build_schemes                 # fetch a fresh snapshot
+    python -m pipeline.build_schemes --raw path.txt  # reuse one already on disk
 """
 
 from __future__ import annotations
@@ -16,13 +16,19 @@ from pathlib import Path
 
 import duckdb
 
-from pipeline.amfi import Scheme, fetch_navall, parse_navall, read_snapshot
+from pipeline.amfi import (
+    Scheme,
+    fetch_navall,
+    parse_navall,
+    read_snapshot,
+    snapshot_provenance,
+)
 
 # Mirrors DESIGN.md 4. The constraints are asserted here, in the pipeline,
 # because Parquet carries no PK/FK — the browser gets flat columns and trusts
 # that this step already proved them clean.
 SCHEMA = """
-CREATE TABLE mf (
+CREATE TABLE schemes (
   scheme_code             INTEGER PRIMARY KEY,
   isin_div_payout_growth  VARCHAR,
   isin_div_reinvestment   VARCHAR,
@@ -33,12 +39,12 @@ CREATE TABLE mf (
 )
 """
 
-INSERT = "INSERT INTO mf VALUES (?, ?, ?, ?, ?, ?, ?)"
+INSERT = "INSERT INTO schemes VALUES (?, ?, ?, ?, ?, ?, ?)"
 
 # A blank string satisfies NOT NULL but is just as broken. Catch it here rather
 # than discovering it as an empty facet in the UI.
 BLANK_CHECK = """
-SELECT count(*) FROM mf
+SELECT count(*) FROM schemes
 WHERE trim(scheme_name) = ''
    OR trim(fund_house) = ''
    OR trim(scheme_type) = ''
@@ -53,7 +59,7 @@ SELECT
   count(DISTINCT scheme_category) AS categories,
   count(isin_div_payout_growth)   AS with_isin_payout_growth,
   count(isin_div_reinvestment)    AS with_isin_reinvestment
-FROM mf
+FROM schemes
 """
 
 MIN_EXPECTED_SCHEMES = 10_000
@@ -64,7 +70,7 @@ class ValidationError(RuntimeError):
 
 
 def build(schemes: list[Scheme], out_dir: Path) -> dict:
-    """Load parsed schemes into DuckDB, validate, and write mf.parquet."""
+    """Load parsed schemes into DuckDB, validate, and write schemes.parquet."""
     con = duckdb.connect()
     con.execute(SCHEMA)
     con.executemany(
@@ -97,9 +103,9 @@ def build(schemes: list[Scheme], out_dir: Path) -> dict:
 
     # Sorted by the join key so row-group statistics can prune scans later.
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "mf.parquet"
+    out_path = out_dir / "schemes.parquet"
     con.execute(
-        "COPY (SELECT * FROM mf ORDER BY scheme_code) TO ? (FORMAT parquet, COMPRESSION zstd)",
+        "COPY (SELECT * FROM schemes ORDER BY scheme_code) TO ? (FORMAT parquet, COMPRESSION zstd)",
         [str(out_path)],
     )
     con.close()
@@ -117,7 +123,7 @@ def main() -> None:
 
     if args.raw:
         snapshot = args.raw
-        provenance = {"source_url": None, "snapshot": snapshot.name, "reused": True}
+        provenance = snapshot_provenance(snapshot)
         print(f"reusing snapshot {snapshot}")
     else:
         snapshot, provenance = fetch_navall(args.raw_dir)
@@ -126,10 +132,10 @@ def main() -> None:
     schemes = list(parse_navall(read_snapshot(snapshot)))
     stats = build(schemes, args.out)
 
-    manifest = args.out / "mf.ingest.json"
+    manifest = args.out / "schemes.ingest.json"
     manifest.write_text(json.dumps({"source": provenance, "stats": stats}, indent=2) + "\n")
 
-    print(f"\nmf.parquet  {stats['parquet_bytes']:,} bytes")
+    print(f"\nschemes.parquet  {stats['parquet_bytes']:,} bytes")
     for key, value in stats.items():
         if key != "parquet_bytes":
             print(f"  {key:<24} {value:,}")

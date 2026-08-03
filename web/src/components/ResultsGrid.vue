@@ -6,14 +6,14 @@
  * Columns come from the Arrow result schema, so any query shape renders. This is
  * not a view of one table; it is a view of whatever the last statement returned.
  */
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   createColumnHelper,
   getCoreRowModel,
   getPaginationRowModel,
   useVueTable,
 } from '@tanstack/vue-table';
-import type { QueryResult } from '../duckdb';
+import { exportQuery, type ExportFormat, type QueryResult } from '../duckdb';
 import { MAX_RENDERED_ROWS } from '../config';
 
 const props = defineProps<{
@@ -76,12 +76,96 @@ function columnType(id: string): string {
 }
 
 const pageCount = computed(() => table.getPageCount());
+
+/* ---------------------------------------------------------------- export --- */
+
+const menuOpen = ref(false);
+const exporting = ref<string | null>(null);
+const exportError = ref<string | null>(null);
+const menu = ref<HTMLElement | null>(null);
+
+const canExport = computed(() => !!props.result && props.result.rowCount > 0 && !props.running);
+
+function onDocumentClick(event: MouseEvent) {
+  if (menu.value && !menu.value.contains(event.target as Node)) menuOpen.value = false;
+}
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') menuOpen.value = false;
+}
+onMounted(() => {
+  document.addEventListener('click', onDocumentClick);
+  document.addEventListener('keydown', onKeydown);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick);
+  document.removeEventListener('keydown', onKeydown);
+});
+
+function timestamp(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
+function download(bytes: Uint8Array, filename: string, mime: string) {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function runExport(format: ExportFormat) {
+  menuOpen.value = false;
+  exportError.value = null;
+  exporting.value = format;
+  try {
+    const bytes = await exportQuery(props.result!.sql, format);
+    download(
+      bytes,
+      `query-${timestamp()}.${format}`,
+      format === 'csv' ? 'text/csv;charset=utf-8' : 'application/vnd.apache.parquet',
+    );
+  } catch (err) {
+    exportError.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    exporting.value = null;
+  }
+}
 </script>
 
 <template>
   <section class="panel">
     <div class="panel-head">
       <p class="label">Results</p>
+
+      <div ref="menu" class="export">
+        <button
+          class="export-btn"
+          type="button"
+          :disabled="!canExport || !!exporting"
+          :aria-expanded="menuOpen"
+          @click="menuOpen = !menuOpen"
+        >
+          {{ exporting ? `Exporting ${exporting}…` : 'Export' }}
+          <span class="caret">▾</span>
+        </button>
+        <ul v-if="menuOpen" class="menu">
+          <li>
+            <button type="button" @click="runExport('csv')">
+              CSV <span>every row, comma-separated</span>
+            </button>
+          </li>
+          <li>
+            <button type="button" @click="runExport('parquet')">
+              Parquet <span>every row, typed and compressed</span>
+            </button>
+          </li>
+        </ul>
+      </div>
 
       <p v-if="running" class="meta mono">running…</p>
       <p v-else-if="error" class="meta mono bad">query failed</p>
@@ -95,6 +179,8 @@ const pageCount = computed(() => table.getPageCount());
       </p>
       <p v-else class="meta mono">—</p>
     </div>
+
+    <p v-if="exportError" class="export-error">{{ exportError }}</p>
 
     <!-- DuckDB's parser messages are good; an analyst debugging their own SQL
          needs the real text, not a friendly paraphrase of it. -->
@@ -115,9 +201,9 @@ const pageCount = computed(() => table.getPageCount());
                 v-for="header in table.getHeaderGroups()[0].headers"
                 :key="header.id"
                 :class="{ num: isNumeric(columnType(header.column.id)) }"
+                :title="`${header.column.id} — ${columnType(header.column.id)}`"
               >
                 {{ header.column.id }}
-                <span class="th-type">{{ columnType(header.column.id) }}</span>
               </th>
               <!-- Slack absorber. Real columns size to their contents; this takes
                    whatever is left so a two-column result still spans the panel
@@ -160,11 +246,102 @@ const pageCount = computed(() => table.getPageCount());
 
 <style scoped>
 .meta {
-  margin: 0;
+  margin: 0 0 0 auto;
   font-size: 11px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------- export --- */
+
+.export {
+  order: 3;
+  position: relative;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.export-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.export-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.caret {
+  font-size: 8px;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 5px);
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  min-width: 15rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.13);
+}
+
+.menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 2px;
+  background: none;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.menu button span {
+  display: block;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.menu button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.export-error {
+  margin: 0;
+  padding: 10px 15px;
+  background: var(--neg-soft);
+  color: var(--neg);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ----------------------------------------------------------------- grid --- */
 
 .meta b {
   color: var(--ink);
@@ -249,17 +426,19 @@ th {
   text-transform: uppercase;
   color: var(--ink);
   text-align: left;
-  background: var(--surface-2);
+  /* White, not the panel-head grey directly above it — sharing that tone merged
+     the two into one grey slab and made the column names read as chrome. The
+     heavier bottom rule is what separates header from data now. */
+  background: var(--surface);
   font-weight: 600;
   border-bottom-color: var(--line-strong);
+  border-bottom-width: 2px;
 }
 
-.th-type {
-  font-size: 9px;
-  color: var(--muted);
-  font-weight: 400;
-  margin-left: 6px;
-  letter-spacing: 0.06em;
+/* The type is on the header's title attribute rather than inline — it is
+   reference, not something you read on every scan of the grid. */
+th {
+  cursor: help;
 }
 
 tbody tr:last-child td {

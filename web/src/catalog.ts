@@ -29,6 +29,8 @@ export interface TableMeta {
   name: string;
   title: string;
   /** What one row represents. Absent for tables not yet documented. */
+  /** One plain sentence saying what the table is, shown under its name. */
+  subtitle?: string | null;
   grain?: string | null;
   description?: string | null;
   examples?: TableExample[];

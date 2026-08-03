@@ -37,8 +37,8 @@ import duckdb
 duckdb.sql("""
   SELECT scheme_name, nav, nav_date
   FROM 'https://<host>/nav/2026-06.parquet' n
-  JOIN 'https://<host>/mf.parquet' m USING (scheme_code)
-  WHERE m.scheme_category LIKE 'Equity%'
+  JOIN 'https://<host>/schemes.parquet' s USING (scheme_code)
+  WHERE s.scheme_category LIKE 'Equity%'
 """).df()
 ```
 
@@ -47,6 +47,13 @@ duckdb.sql("""
 Sourced from [AMFI](https://www.amfiindia.com/), which publishes NAV data daily
 under SEBI's disclosure mandate. Every record carries the source file and
 retrieval time it came from.
+
+One exception, stated plainly: **historical NAV is backfilled from
+[mfapi.in](https://www.mfapi.in/)**, a mirror of AMFI's own scheme codes. AMFI
+publishes no working bulk history export — its download page returns its own
+HTML form for every request ([DESIGN.md §5.5](DESIGN.md)) — so history is one hop
+from the publisher. The scheme catalogue and each day's new NAV come straight
+from AMFI's `NAVAll.txt`. The manifest says which is which per table.
 
 Coverage — including **what's missing** — is published alongside the data.
 Gaps are documented, not hidden.
