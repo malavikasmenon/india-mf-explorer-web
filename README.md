@@ -2,11 +2,6 @@
 
 Query Indian mutual fund data like a database. No ETL, no signup, no API keys.
 
-> **Status: early.** Nothing is deployed yet. See [DESIGN.md](DESIGN.md) for the
-> full design brief.
-
----
-
 ## Why
 
 All of this data is already public — SEBI mandates its disclosure and AMFI
