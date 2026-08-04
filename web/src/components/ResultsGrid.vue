@@ -15,6 +15,7 @@ import {
 } from '@tanstack/vue-table';
 import { exportQuery, type ExportFormat, type QueryResult } from '../duckdb';
 import { MAX_RENDERED_ROWS } from '../config';
+import { renderCell } from '../render';
 
 const props = defineProps<{
   result: QueryResult | null;
@@ -56,19 +57,6 @@ const NUMERIC = /^(TINYINT|SMALLINT|INTEGER|BIGINT|HUGEINT|U?[A-Z]*INT|FLOAT|DOU
  */
 function isNumeric(type: string): boolean {
   return NUMERIC.test(type);
-}
-
-/**
- * NULL and empty string are different facts here — one means AMFI published
- * nothing, the other means it published a blank — so they must never render
- * identically. BIGINT arrives as a JS BigInt, which stringifies to
- * "[object Object]" through the default path and throws in JSON.stringify.
- */
-function render(value: unknown): { text: string; isNull: boolean } {
-  if (value === null || value === undefined) return { text: 'NULL', isNull: true };
-  if (typeof value === 'bigint') return { text: value.toLocaleString(), isNull: false };
-  if (value instanceof Date) return { text: value.toISOString().slice(0, 10), isNull: false };
-  return { text: String(value), isNull: false };
 }
 
 function columnType(id: string): string {
@@ -218,10 +206,10 @@ async function runExport(format: ExportFormat) {
                 :key="cell.id"
                 :class="{
                   num: isNumeric(columnType(cell.column.id)),
-                  null: render(cell.getValue()).isNull,
+                  null: renderCell(cell.getValue(), columnType(cell.column.id)).isNull,
                 }"
               >
-                {{ render(cell.getValue()).text }}
+                {{ renderCell(cell.getValue(), columnType(cell.column.id)).text }}
               </td>
               <td class="spacer"></td>
             </tr>

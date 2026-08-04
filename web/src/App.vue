@@ -10,6 +10,7 @@ import SchemaRail from './components/SchemaRail.vue';
 import SqlEditor from './components/SqlEditor.vue';
 import ExampleQueries from './components/ExampleQueries.vue';
 import ResultsGrid from './components/ResultsGrid.vue';
+import ThemeToggle from './components/ThemeToggle.vue';
 import {
   completionSchema,
   fetchManifest,
@@ -58,13 +59,21 @@ onMounted(async () => {
     await initDuckDB(loaded);
     manifest.value = loaded;
 
-    const first = loaded.tables.flatMap((t) => t.examples ?? [])[0];
-    if (first) {
-      sql.value = first.sql;
-      activeExample.value = first.label;
+    // A query handed off from the landing page's "try it" chips — e.g.
+    // /app/?q=SELECT+...  — wins over the usual first-example default.
+    const linkedQuery = new URLSearchParams(window.location.search).get('q');
+
+    if (linkedQuery) {
+      sql.value = linkedQuery;
     } else {
-      const table = [...loaded.tables].sort((a, b) => b.row_count - a.row_count)[0];
-      sql.value = table ? `SELECT *\nFROM ${table.name}\nLIMIT 100` : 'SELECT 1';
+      const first = loaded.tables.flatMap((t) => t.examples ?? [])[0];
+      if (first) {
+        sql.value = first.sql;
+        activeExample.value = first.label;
+      } else {
+        const table = [...loaded.tables].sort((a, b) => b.row_count - a.row_count)[0];
+        sql.value = table ? `SELECT *\nFROM ${table.name}\nLIMIT 100` : 'SELECT 1';
+      }
     }
 
     booting.value = false;
@@ -106,15 +115,18 @@ async function run() {
 <template>
   <header class="topbar">
     <div class="brand">
-      <h1 class="wordmark">OPEN <span>INDIAN</span> FUND DATA</h1>
+      <h1 class="wordmark"><a href="/">OPEN <span>INDIAN</span> FUND DATA</a></h1>
       <p class="strap">Skip the ETL &amp; start at the question.</p>
     </div>
     <div class="stats">
       <span v-for="s in stats" :key="s.k">{{ s.k }} <b>{{ s.v }}</b></span>
     </div>
-    <button class="rail-toggle" type="button" @click="railOpen = !railOpen">
-      {{ railOpen ? '✕' : '☰' }} schema
-    </button>
+    <div class="topbar-actions">
+      <ThemeToggle />
+      <button class="rail-toggle" type="button" @click="railOpen = !railOpen">
+        {{ railOpen ? '✕' : '☰' }} schema
+      </button>
+    </div>
   </header>
 
   <div class="shell">
@@ -199,6 +211,11 @@ async function run() {
   margin: 0;
 }
 
+.wordmark a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .wordmark span {
   color: var(--accent);
 }
@@ -217,6 +234,12 @@ async function run() {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .stats b {
@@ -313,9 +336,12 @@ async function run() {
     margin-left: 0;
   }
 
+  .topbar-actions {
+    margin-left: auto;
+  }
+
   .rail-toggle {
     display: block;
-    margin-left: auto;
     padding: 5px 11px;
     background: var(--surface-2);
     border: 1px solid var(--line);

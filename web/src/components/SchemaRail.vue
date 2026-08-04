@@ -46,7 +46,6 @@ function compact(n: number): string {
             <button
               type="button"
               class="c-name mono"
-              :class="{ key: column.primary_key }"
               :title="
                 column.description ? `${column.name} — ${column.description}` : column.name
               "
@@ -55,11 +54,6 @@ function compact(n: number): string {
               {{ column.name }}
             </button>
             <span class="c-type mono">{{ column.type }}</span>
-            <!-- The identifier, marked rather than described. It is the first
-                 thing you need to know to join anything to this table. -->
-            <span class="c-flag">
-              <span v-if="column.primary_key" class="chip">key</span>
-            </span>
           </template>
         </div>
       </section>
@@ -127,13 +121,13 @@ function compact(n: number): string {
 
 .cols {
   display: grid;
-  /* The name absorbs slack and truncates; type and key take only what they need,
-     so nothing can be pushed out through the card's right edge however long a
+  /* The name absorbs slack and truncates; type takes only what it needs, so
+     nothing can be pushed out through the card's right edge however long a
      field name gets. */
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  column-gap: 7px;
-  row-gap: 3px;
+  column-gap: 12px;
+  row-gap: 7px;
 }
 
 .c-name {
@@ -153,35 +147,11 @@ function compact(n: number): string {
   text-decoration: underline;
 }
 
-/* Identifier gets the accent, so it reads as structurally different. */
-.c-name.key {
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .c-type {
   font-size: 9.5px;
   color: var(--muted);
   text-align: right;
   white-space: nowrap;
-}
-
-.c-flag {
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.chip {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 2px;
-  background: var(--accent-soft);
-  color: var(--accent);
 }
 
 .note {

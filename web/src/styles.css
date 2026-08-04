@@ -28,24 +28,66 @@
   color-scheme: light;
 }
 
+/* Dark tokens, declared twice on purpose: once behind the OS-preference query
+   (the earliest possible paint, before the inline head script or this file's
+   [data-theme] rule can run) and once behind the manual [data-theme='dark']
+   attribute, which is what a user's explicit toggle choice sets and which
+   must win regardless of OS preference. Same values in both places. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0d1512;
-    --surface: #131e1a;
-    --surface-2: #1a2622;
-    --ink: #e8ede9;
-    --muted: #8fa098;
-    --line: #24332c;
-    --line-strong: #3a4d43;
+  :root:not([data-theme]) {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --surface-2: #19191c;
+    --ink: #f2f3f1;
+    --muted: #8b8f92;
+    --line: #26262a;
+    --line-strong: #3a3a40;
     --accent: #e0a344;
     --accent-soft: rgba(224, 163, 68, 0.14);
-    --pos: #4bb68c;
-    --pos-soft: rgba(75, 182, 140, 0.14);
-    --neg: #d2705c;
-    --neg-soft: rgba(210, 112, 92, 0.14);
+    --pos: #4fc38c;
+    --pos-soft: rgba(79, 195, 140, 0.14);
+    --neg: #e0836a;
+    --neg-soft: rgba(224, 131, 106, 0.14);
     --on-accent: #101a16;
     color-scheme: dark;
   }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a0a0b;
+  --surface: #111113;
+  --surface-2: #19191c;
+  --ink: #f2f3f1;
+  --muted: #8b8f92;
+  --line: #26262a;
+  --line-strong: #3a3a40;
+  --accent: #e0a344;
+  --accent-soft: rgba(224, 163, 68, 0.14);
+  --pos: #4fc38c;
+  --pos-soft: rgba(79, 195, 140, 0.14);
+  --neg: #e0836a;
+  --neg-soft: rgba(224, 131, 106, 0.14);
+  --on-accent: #101a16;
+  color-scheme: dark;
+}
+
+/* Manual light choice must win even when the OS itself is in dark mode. */
+:root[data-theme='light'] {
+  --bg: #f2f4f2;
+  --surface: #ffffff;
+  --surface-2: #eaeeeb;
+  --ink: #14201c;
+  --muted: #5c6b64;
+  --line: #d9dfda;
+  --line-strong: #bcc7be;
+  --accent: #b0731a;
+  --accent-soft: rgba(176, 115, 26, 0.12);
+  --pos: #17694e;
+  --pos-soft: rgba(23, 105, 78, 0.12);
+  --neg: #9c3a2c;
+  --neg-soft: rgba(156, 58, 44, 0.12);
+  --on-accent: #ffffff;
+  color-scheme: light;
 }
 
 * {

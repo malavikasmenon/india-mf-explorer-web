@@ -139,8 +139,11 @@ async function connect(manifest: Manifest): Promise<void> {
     // take the identical code path here and in the pipeline.
     const files = table.files.map((f) => `'${dataUrl(f)}'`).join(', ');
     try {
+      // hive_partitioning=false: the year=/month= folders are a storage
+      // layout, not columns - left on, DuckDB auto-detects them and adds
+      // redundant year/month columns that duplicate what `date` carries.
       await connection.query(
-        `CREATE OR REPLACE VIEW "${table.name}" AS SELECT * FROM read_parquet([${files}])`,
+        `CREATE OR REPLACE VIEW "${table.name}" AS SELECT * FROM read_parquet([${files}], hive_partitioning = false)`,
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
