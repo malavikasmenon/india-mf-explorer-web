@@ -1,9 +1,16 @@
 /**
  * Where the published dataset lives.
  *
- * Local static files under `public/data` are a stopgap for testing the premise;
- * the real home is object storage. Every path in the app is built from this one
- * value, so moving is an env var rather than a refactor.
+ * Locally this defaults to `/data`, served from `public/data` — populated by
+ * `npm run sync-data` (part of `npm run dev` / `npm run build`) copying the
+ * pipeline's own local output. That copy step only makes sense with a local
+ * `data/` folder to copy from, though, so it's not part of a production
+ * build: `npm run build:prod` skips it and relies entirely on this env var
+ * instead, set at Netlify build time to the data repo's jsDelivr URL
+ * (https://cdn.jsdelivr.net/gh/<user>/open-mf-data-india@main/data) — the
+ * production app fetches straight from there at runtime, never from
+ * whatever built it. Every path in the app is built from this one value, so
+ * moving the dataset elsewhere is an env var change, not a refactor.
  */
 export const DATA_BASE_URL = import.meta.env.VITE_DATA_BASE_URL ?? '/data';
 

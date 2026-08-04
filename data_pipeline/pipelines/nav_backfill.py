@@ -1,6 +1,9 @@
 # pipelines/nav_backfill.py
 
+import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -9,6 +12,15 @@ from data_pipeline.clients.mfapi import fetch_history
 from data_pipeline.storage.parquet import write_parquet
 from data_pipeline.storage.paths import nav_month_path
 from data_pipeline.storage.metadata import write_ingest_metadata
+
+# Fetched and written in batches rather than all 14k schemes at once, so a
+# run that dies partway (timeout, OOM, a cancelled Actions job) has already
+# saved everything up to the last completed batch instead of losing all of
+# it - the next run resumes from there instead of starting over.
+BATCH_SIZE = 500
+
+NAV_DIR = Path("data") / "nav"
+FAILURES_PATH = Path("data") / "nav_backfill_failures.json"
 
 
 def fetch_nav_history(scheme_code):
@@ -47,6 +59,11 @@ def process_scheme(scheme_code):
 
 
 def store_nav_backfill(df):
+    """Write one batch's rows into their monthly files, merging with
+    whatever's already there rather than overwriting it - each batch only
+    covers a subset of schemes, and most months are touched by every batch,
+    so a blind overwrite would erase the previous batches' rows for that
+    month."""
 
     grouped = df.groupby(
         [
@@ -61,26 +78,66 @@ def store_nav_backfill(df):
         # DATE, not TIMESTAMP, in the Parquet the browser reads.
         partition["date"] = partition["date"].dt.date
 
+        path = nav_month_path(year, month)
+        if path.exists():
+            partition = pd.concat([pd.read_parquet(path), partition], ignore_index=True)
+            partition = partition.drop_duplicates(subset=["scheme_code", "date"])
+
         write_parquet(
             partition.sort_values(["date", "scheme_code"]),
-            nav_month_path(year, month),
+            path,
         )
 
 
+def already_backfilled() -> set[str]:
+    """Scheme codes already present in the nav table on disk, so a resumed
+    run doesn't re-fetch (and re-hit mfapi.in for) schemes it already has."""
+    if not NAV_DIR.exists():
+        return set()
+    codes: set[str] = set()
+    for path in NAV_DIR.rglob("*.parquet"):
+        codes.update(pd.read_parquet(path, columns=["scheme_code"])["scheme_code"].unique())
+    return codes
+
+
 def build_nav_backfill(scheme_codes):
+    done = already_backfilled()
+    todo = [c for c in scheme_codes if c not in done]
+    print(f"{len(scheme_codes) - len(todo)} schemes already backfilled; fetching {len(todo)}")
 
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        dfs = list(executor.map(process_scheme, scheme_codes))
+    failures: list[str] = []
 
-    dfs = [df for df in dfs if df is not None]
-    print(f"fetched {len(dfs)} of {len(scheme_codes)} schemes")
+    for start in range(0, len(todo), BATCH_SIZE):
+        batch = todo[start : start + BATCH_SIZE]
 
-    nav_df = pd.concat(
-        dfs,
-        ignore_index=True,
-    )
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = list(executor.map(process_scheme, batch))
 
-    store_nav_backfill(nav_df)
+        dfs = [df for df in results if df is not None]
+        failures.extend(code for code, df in zip(batch, results) if df is None)
+
+        if dfs:
+            store_nav_backfill(pd.concat(dfs, ignore_index=True))
+
+        processed = min(start + BATCH_SIZE, len(todo))
+        print(f"  {processed}/{len(todo)} schemes processed, {len(failures)} failed so far")
+
+    if failures:
+        FAILURES_PATH.write_text(
+            json.dumps(
+                {
+                    "failed_scheme_codes": failures,
+                    "checked_at": datetime.now(timezone.utc).isoformat(),
+                },
+                indent=2,
+            )
+        )
+        print(f"{len(failures)} schemes had no usable NAV history; see {FAILURES_PATH}")
+    elif FAILURES_PATH.exists():
+        # A clean run after a previously-failing one - the old file would
+        # otherwise sit there claiming failures that no longer exist.
+        FAILURES_PATH.unlink()
+
     write_ingest_metadata(
         "nav",
         {

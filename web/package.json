@@ -9,6 +9,7 @@
     "sync-data": "mkdir -p public/data && cp ../data/manifest.json public/data/ && rm -rf public/data/schemes public/data/nav && cp -R ../data/schemes ../data/nav public/data/",
     "dev": "npm run sync-data && vite",
     "build": "npm run sync-data && vue-tsc --noEmit && vite build",
+    "build:prod": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit"
   },
