@@ -24,58 +24,15 @@ This skips that. The tables are already loaded and joined. You start at the quer
 - **SQL directly in the browser** against the full dataset — DuckDB-WASM, so
   queries run on your machine, not a server
 - **Plain-English questions** that generate SQL you can read and edit before it
-  runs. The SQL is always visible; it's a drafting assistant, not an oracle
-- **Provenance on every row** — which source file, published when, parsed how
-- **Use it from your own tools** — point `duckdb`, pandas, or a notebook straight
-  at the hosted Parquet, or download the whole thing
+  runs. The SQL is always visible; it's a drafting assistant, not an oracle (TBD)
 
-## Use it without this site
-
-```python
-import duckdb
-
-duckdb.sql("""
-  SELECT scheme_name, nav, nav_date
-  FROM 'https://<host>/nav/2026-06.parquet' n
-  JOIN 'https://<host>/schemes.parquet' s USING (scheme_code)
-  WHERE s.scheme_category LIKE 'Equity%'
-""").df()
-```
 
 ## Data
 
 Sourced from [AMFI](https://www.amfiindia.com/), which publishes NAV data daily
-under SEBI's disclosure mandate. Every record carries the source file and
-retrieval time it came from.
+under SEBI's disclosure mandate and 
+[mfapi.in](https://www.mfapi.in/)**, a mirror of AMFI's own scheme codes.
 
-One exception, stated plainly: **historical NAV is backfilled from
-[mfapi.in](https://www.mfapi.in/)**, a mirror of AMFI's own scheme codes. AMFI
-publishes no working bulk history export — its download page returns its own
-HTML form for every request ([DESIGN.md §5.5](DESIGN.md)) — so history is one hop
-from the publisher. The scheme catalogue and each day's new NAV come straight
-from AMFI's `NAVAll.txt`. The manifest says which is which per table.
-
-Coverage — including **what's missing** — is published alongside the data.
-Gaps are documented, not hidden.
-
-## Scope
-
-**Now** — schemes and daily NAV, exactly as published.
-
-**Next** — plan/option parsing, so the four variants of a fund can be grouped;
-derived statistics (rolling returns, drawdowns, category rankings); and the
-Direct-vs-Regular comparison, which shows what distributor commission actually
-costs on an otherwise identical portfolio.
-
-**Later** — monthly portfolio holdings, for overlap and concentration analysis.
-
-## Licence
-
-- **Code** — TBD (MIT or Apache-2.0)
-- **Data** — TBD (CC-BY-4.0)
-
-See [DESIGN.md §6](DESIGN.md) for the upstream licensing position, which is
-unresolved and must be settled before any data is published.
 
 ## Not financial advice
 
