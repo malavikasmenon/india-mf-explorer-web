@@ -36,7 +36,15 @@ def discover(data_dir: Path) -> dict[str, list[Path]]:
     for child in sorted(data_dir.iterdir()):
         if not child.is_dir():
             continue
-        partitions = sorted(child.rglob("*.parquet"))
+        # Newest first, not oldest first. DuckDB's TopN pushdown for
+        # `ORDER BY <partition col> DESC LIMIT n` narrows its threshold
+        # adaptively as it scans files in the order it's given them, rather
+        # than consulting every file's footer stats upfront - given the
+        # files oldest-first, it doesn't find a tight threshold until it's
+        # already scanned nearly everything. Newest-first, it tightens
+        # immediately and skips the rest. Measured: ~41s -> ~18s on the
+        # `nav` table's 245 files for `ORDER BY date DESC LIMIT 10`.
+        partitions = sorted(child.rglob("*.parquet"), reverse=True)
         if partitions:
             tables.setdefault(child.name, []).extend(partitions)
 

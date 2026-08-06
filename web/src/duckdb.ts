@@ -103,10 +103,14 @@ function bootTimeout(): Promise<never> {
       () =>
         reject(
           new Error(
-            `The query engine did not start within ${BOOT_TIMEOUT_MS / 1000}s.\n\n` +
+            `The query engine did not start within ${BOOT_TIMEOUT_MS / 1000}s, twice in a row.\n\n` +
               `DuckDB loads its Parquet extension from ${EXTENSION_HOST} at startup, ` +
               `so this usually means that host is unreachable or slow — check your ` +
-              `network, VPN, or proxy. Everything else here is served locally.`,
+              `network, VPN, or proxy. Everything else here is served locally.\n\n` +
+              `If this keeps happening in Chrome specifically but not other browsers, ` +
+              `try disabling extensions (ad blockers in particular) or use a ` +
+              `different browser — the engine is a ~35MB download and something in ` +
+              `the browser occasionally interrupts it mid-stream.`,
           ),
         ),
       BOOT_TIMEOUT_MS,
@@ -121,8 +125,27 @@ function bootTimeout(): Promise<never> {
  * an analyst writes `FROM schemes` and never sees a URL, and adding a table upstream
  * is enough to make it queryable here.
  */
+const BOOT_ATTEMPTS = 2;
+
 export async function initDuckDB(manifest: Manifest): Promise<void> {
-  await Promise.race([connect(manifest), bootTimeout()]);
+  for (let attempt = 1; attempt <= BOOT_ATTEMPTS; attempt++) {
+    try {
+      await Promise.race([connect(manifest), bootTimeout()]);
+      return;
+    } catch (err) {
+      // A ~35MB streaming wasm compile occasionally fails mid-download
+      // (seen so far only in Chrome, not Firefox - plausibly an extension
+      // or memory pressure interfering with the streamed response) and can
+      // leave the instantiate() promise hanging rather than rejecting, so
+      // this retry only ever runs after the boot timeout below has already
+      // fired once. A fresh attempt gets a fresh worker; the old one is
+      // just abandoned. Reset state so it isn't reused half-initialized.
+      database = null;
+      connection = null;
+      if (attempt === BOOT_ATTEMPTS) throw err;
+      console.warn(`DuckDB failed to start (attempt ${attempt}/${BOOT_ATTEMPTS}), retrying…`, err);
+    }
+  }
 }
 
 async function connect(manifest: Manifest): Promise<void> {
