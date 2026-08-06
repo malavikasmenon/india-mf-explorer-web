@@ -26,3 +26,7 @@ def nav_month_path(year: int, month: int) -> Path:
         / f"month={month:02d}"
         / "history.parquet"
     )
+
+
+def nav_year_path(year: int) -> Path:
+    return DATA_DIR / "nav" / f"year={year}" / "history.parquet"

@@ -1,0 +1,8 @@
+# Netlify convention: this file is copied verbatim into the build output and
+# read at serve time. Everything under /assets/ is content-hashed by Vite
+# (the filename itself changes on any content change), so it's safe to cache
+# forever - unlike Netlify's default `max-age=0, must-revalidate`, which was
+# making every repeat visit re-fetch or revalidate the ~35MB DuckDB-WASM
+# engine over the network instead of using what's already on disk.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
