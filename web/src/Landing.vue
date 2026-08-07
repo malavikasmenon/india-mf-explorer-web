@@ -39,6 +39,7 @@ function openInEditor(example: TableExample) {
   <header class="l-nav">
     <a class="wordmark mono" href="/">OPEN <span>INDIAN</span> FUND DATA</a>
     <div class="l-nav-right">
+      <a class="l-explore" href="/dictionary/">Data</a>
       <a class="l-explore" href="/app/">Explorer</a>
       <ThemeToggle />
     </div>

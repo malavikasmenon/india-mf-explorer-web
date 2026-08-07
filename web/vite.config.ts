@@ -16,11 +16,13 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      // Two static pages, not one SPA with client routes: `/` is a plain HTML
-      // landing page (no Vue, nothing to boot), `/app/` is the DuckDB workbench.
+      // Three static pages, not one SPA with client routes: `/` is a plain HTML
+      // landing page, `/app/` is the DuckDB workbench, `/dictionary/` is the
+      // data dictionary — none of them boot the others' Vue app.
       input: {
         main: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app/index.html'),
+        dictionary: resolve(__dirname, 'dictionary/index.html'),
       },
     },
   },

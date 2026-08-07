@@ -122,6 +122,7 @@ async function run() {
       <span v-for="s in stats" :key="s.k">{{ s.k }} <b>{{ s.v }}</b></span>
     </div>
     <div class="topbar-actions">
+      <a class="data-link mono" href="/dictionary/">Data</a>
       <ThemeToggle />
       <button class="rail-toggle" type="button" @click="railOpen = !railOpen">
         {{ railOpen ? '✕' : '☰' }} schema
@@ -321,6 +322,14 @@ async function run() {
 
 .foot-col a {
   color: var(--accent);
+}
+
+.data-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
 }
 
 .rail-toggle {
