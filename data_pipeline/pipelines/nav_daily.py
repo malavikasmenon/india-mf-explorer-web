@@ -1,5 +1,3 @@
-from datetime import date
-
 import pandas as pd
 
 from data_pipeline.clients.mfapi import fetch_latest
@@ -15,15 +13,22 @@ def fetch_nav_daily():
 def transform_nav_daily(data):
     df = pd.DataFrame(data)
 
-    today = date.today().strftime("%d-%m-%Y")
+    # /mf/latest is not guaranteed to have rolled over to today by the time
+    # this runs - AMFI's publish can lag, or the job can simply land early
+    # on a given day. Take whichever date is actually the most recent in
+    # the response rather than assuming it's today: that's the only way to
+    # still capture yesterday's NAV if today's hasn't landed in the source
+    # yet, instead of silently fetching zero rows and writing nothing.
+    parsed_dates = pd.to_datetime(df["date"], format="%d-%m-%Y")
+    latest = parsed_dates.max()
 
     # mfapi's /mf/latest returns camelCase fields plus scheme metadata that
     # already lives in the schemes table; keep only what the nav table needs,
     # renamed to match nav_backfill's output so both land in the same schema.
-    df = df.loc[df["date"] == today, ["schemeCode", "date", "nav"]].rename(
+    df = df.loc[parsed_dates == latest, ["schemeCode", "date", "nav"]].rename(
         columns={"schemeCode": "scheme_code"}
     )
-    print(f"Fetched {len(df)} records for {today}")
+    print(f"Fetched {len(df)} records for {latest:%d-%m-%Y}")
 
     # scheme_code is an identifier, not a quantity - keep it a string so it
     # reads and joins the same way as every other code in the schemes table.
