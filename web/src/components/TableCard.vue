@@ -1,12 +1,14 @@
 <script setup lang="ts">
 /**
- * One table's box in the ER diagram on the /data/ page. `standalone` marks
- * `ter`, which shares no join key with the others — dashed border rather
- * than the solid one the joined tables get, so the diagram reads the
- * relationship without needing a caption.
+ * One table's box in the ER diagram on the /dictionary/ page. `standalone`
+ * marks `ter`, which shares no join key with the others — dashed border
+ * rather than the solid one the joined tables get, so the diagram reads
+ * the relationship without needing a caption.
  */
 export interface CardColumn {
   name: string;
+  /** As DuckDB reports it, e.g. "varchar", "double". */
+  type: string;
   /** Part of the table's primary key. */
   pk?: boolean;
   /** Joins to schemes.scheme_code. */
@@ -16,31 +18,29 @@ export interface CardColumn {
 defineProps<{
   title: string;
   subtitle?: string;
-  rowCount?: number | null;
   columns: CardColumn[];
   standalone?: boolean;
 }>();
-
-function compact(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
-}
 </script>
 
 <template>
   <div class="card panel" :class="{ standalone }">
     <div class="card-head">
       <span class="card-title mono">{{ title }}</span>
-      <span v-if="rowCount != null" class="card-rows mono">{{ compact(rowCount) }} rows</span>
     </div>
     <p v-if="subtitle" class="card-sub">{{ subtitle }}</p>
     <div class="card-cols">
-      <span v-for="c in columns" :key="c.name" class="c-name mono">
-        {{ c.name }}
-        <span v-if="c.pk" class="tag tag-pk" title="Primary key">PK</span>
-        <span v-if="c.fk" class="tag tag-fk" title="Joins to schemes.scheme_code">JOIN</span>
-      </span>
+      <!-- Name grows and wraps; type takes only what it needs on the right,
+           the same split SchemaRail uses — nothing here can push past the
+           card's own edge however long a name or type string gets. -->
+      <template v-for="c in columns" :key="c.name">
+        <span class="c-name mono">
+          {{ c.name }}
+          <span v-if="c.pk" class="tag tag-pk" title="Primary key">PK</span>
+          <span v-if="c.fk" class="tag tag-fk" title="Joins to schemes.scheme_code">JOIN</span>
+        </span>
+        <span class="c-type mono">{{ c.type }}</span>
+      </template>
     </div>
   </div>
 </template>
@@ -58,23 +58,9 @@ function compact(n: number): string {
   background: var(--surface-2);
 }
 
-.card-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
 .card-title {
   font-size: 13px;
   font-weight: 700;
-}
-
-.card-rows {
-  font-size: 10px;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .card-sub {
@@ -85,9 +71,10 @@ function compact(n: number): string {
 }
 
 .card-cols {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 6px;
 }
 
 .c-name {
@@ -97,6 +84,15 @@ function compact(n: number): string {
   flex-wrap: wrap;
   gap: 4px 6px;
   overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.c-type {
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  align-self: start;
+  padding-top: 1px;
 }
 
 .tag {

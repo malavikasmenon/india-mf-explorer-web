@@ -1,71 +1,54 @@
 <script setup lang="ts">
 /**
- * The /data/ page: what tables exist, how they join, and where each one
- * comes from. A reference page, not the workbench — it does not boot
- * DuckDB, same reasoning as Landing.vue. Row counts are read from the
- * manifest so they don't drift from what's actually published; everything
- * else (columns, join keys, source prose) is hand-written here because the
- * manifest has no notion of refresh cadence or which column is a foreign key.
+ * The /dictionary/ page: what tables exist, how they join, and where each
+ * one comes from. A reference page, not the workbench — it does not boot
+ * DuckDB, same reasoning as Landing.vue. Fully static: columns, types, join
+ * keys, cardinality and source prose are all hand-written here, because an
+ * ER diagram is describing the *shape* of the dataset, which doesn't change
+ * release to release the way row counts do.
  */
-import { onMounted, ref } from 'vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import TableCard, { type CardColumn } from './components/TableCard.vue';
-import { fetchManifest, type Manifest } from './catalog';
-
-const manifest = ref<Manifest | null>(null);
-
-onMounted(async () => {
-  try {
-    manifest.value = await fetchManifest();
-  } catch {
-    // Row counts are a nice-to-have on this page; a manifest hiccup
-    // shouldn't block the rest of a static reference page from rendering.
-  }
-});
-
-function rowsFor(name: string): number | null {
-  return manifest.value?.tables.find((t) => t.name === name)?.row_count ?? null;
-}
 
 const schemesCols: CardColumn[] = [
-  { name: 'scheme_code', pk: true },
-  { name: 'scheme_name' },
-  { name: 'fund_house' },
-  { name: 'scheme_type' },
-  { name: 'scheme_category' },
-  { name: 'isin_div_payout_growth' },
-  { name: 'isin_div_reinvestment' },
+  { name: 'scheme_code', type: 'varchar', pk: true },
+  { name: 'scheme_name', type: 'varchar' },
+  { name: 'fund_house', type: 'varchar' },
+  { name: 'scheme_type', type: 'varchar' },
+  { name: 'scheme_category', type: 'varchar' },
+  { name: 'isin_div_payout_growth', type: 'varchar' },
+  { name: 'isin_div_reinvestment', type: 'varchar' },
 ];
 
 const navCols: CardColumn[] = [
-  { name: 'scheme_code', pk: true, fk: true },
-  { name: 'date', pk: true },
-  { name: 'nav' },
+  { name: 'scheme_code', type: 'varchar', pk: true, fk: true },
+  { name: 'date', type: 'date', pk: true },
+  { name: 'nav', type: 'double' },
 ];
 
 const aumCols: CardColumn[] = [
-  { name: 'scheme_code', pk: true, fk: true },
-  { name: 'period', pk: true },
-  { name: 'aum_excl_fof_domestic_incl_fof_overseas' },
-  { name: 'aum_fof_domestic' },
+  { name: 'scheme_code', type: 'varchar', pk: true, fk: true },
+  { name: 'period', type: 'varchar', pk: true },
+  { name: 'aum_excl_fof_domestic_incl_fof_overseas', type: 'double' },
+  { name: 'aum_fof_domestic', type: 'double' },
 ];
 
 const terCols: CardColumn[] = [
-  { name: 'nsdl_scheme_code', pk: true },
-  { name: 'ter_date', pk: true },
-  { name: 'scheme_name' },
-  { name: 'scheme_type' },
-  { name: 'scheme_category' },
-  { name: 'regular_ber' },
-  { name: 'regular_brokerage_cost' },
-  { name: 'regular_transaction_cost' },
-  { name: 'regular_statutory_levies' },
-  { name: 'regular_ter' },
-  { name: 'direct_ber' },
-  { name: 'direct_brokerage_cost' },
-  { name: 'direct_transaction_cost' },
-  { name: 'direct_statutory_levies' },
-  { name: 'direct_ter' },
+  { name: 'nsdl_scheme_code', type: 'varchar', pk: true },
+  { name: 'ter_date', type: 'date', pk: true },
+  { name: 'scheme_name', type: 'varchar' },
+  { name: 'scheme_type', type: 'varchar' },
+  { name: 'scheme_category', type: 'varchar' },
+  { name: 'regular_ber', type: 'double' },
+  { name: 'regular_brokerage_cost', type: 'double' },
+  { name: 'regular_transaction_cost', type: 'double' },
+  { name: 'regular_statutory_levies', type: 'double' },
+  { name: 'regular_ter', type: 'double' },
+  { name: 'direct_ber', type: 'double' },
+  { name: 'direct_brokerage_cost', type: 'double' },
+  { name: 'direct_transaction_cost', type: 'double' },
+  { name: 'direct_statutory_levies', type: 'double' },
+  { name: 'direct_ter', type: 'double' },
 ];
 
 interface SourceRow {
@@ -131,28 +114,34 @@ const sources: SourceRow[] = [
             <TableCard
               title="schemes"
               subtitle="One row per AMFI scheme code."
-              :row-count="rowsFor('schemes')"
               :columns="schemesCols"
             />
-            <div class="stem" />
+            <div class="stem-wrap">
+              <div class="stem" />
+              <span class="mult mono" title="One scheme_code in schemes">1</span>
+            </div>
           </div>
 
           <div class="children">
             <div class="child">
-              <div class="stem" />
+              <div class="stem-wrap">
+                <div class="stem" />
+                <span class="mult mono" title="Many rows in nav per scheme_code">N</span>
+              </div>
               <TableCard
                 title="nav"
                 subtitle="One row per scheme per day."
-                :row-count="rowsFor('nav')"
                 :columns="navCols"
               />
             </div>
             <div class="child">
-              <div class="stem" />
+              <div class="stem-wrap">
+                <div class="stem" />
+                <span class="mult mono" title="Many rows in aum per scheme_code">N</span>
+              </div>
               <TableCard
                 title="aum"
                 subtitle="One row per scheme per quarter."
-                :row-count="rowsFor('aum')"
                 :columns="aumCols"
               />
             </div>
@@ -162,7 +151,6 @@ const sources: SourceRow[] = [
             <TableCard
               title="ter"
               subtitle="One row per scheme per day."
-              :row-count="rowsFor('ter')"
               :columns="terCols"
               standalone
             />
@@ -170,11 +158,11 @@ const sources: SourceRow[] = [
         </div>
 
         <p class="erd-note">
-          <span class="tag tag-fk">JOIN</span> <code class="mono">scheme_code</code> links
-          <code class="mono">schemes</code> to <code class="mono">nav</code> and
-          <code class="mono">aum</code>. <code class="mono">ter</code> stands alone — AMFI
-          discloses it against NSDL's own scheme code, a different registry with no column
-          in common with the rest of this dataset.
+          One <code class="mono">schemes</code> row matches many rows in
+          <code class="mono">nav</code> and <code class="mono">aum</code> (1:N), joined on
+          <code class="mono">scheme_code</code>. <code class="mono">ter</code> stands alone —
+          AMFI discloses it against NSDL's own scheme code, a different registry with no
+          column in common with the rest of this dataset.
         </p>
       </div>
     </section>
@@ -320,10 +308,29 @@ main {
   align-items: center;
 }
 
+.stem-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
 .stem {
   width: 1px;
   height: 24px;
   background: var(--line-strong);
+}
+
+/* The cardinality mark sits beside its line rather than breaking it — a
+   gap in the connector would read as two lines, not one labelled one. */
+.mult {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(7px, -50%);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .children {
@@ -361,17 +368,6 @@ main {
 .erd-note code {
   color: var(--ink);
   font-size: 11.5px;
-}
-
-.erd-note .tag {
-  font-family: var(--mono);
-  font-size: 8.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 1px 4px;
-  border-radius: 2px;
-  color: var(--pos);
-  background: var(--pos-soft);
 }
 
 .d-sources {
@@ -495,7 +491,7 @@ main {
     width: 100%;
   }
 
-  .stem {
+  .stem-wrap {
     display: none;
   }
 }
