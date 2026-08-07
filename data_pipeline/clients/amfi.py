@@ -2,6 +2,11 @@ import requests
 
 AMFI_URL = "https://www.amfiindia.com/spages/NAVAll.txt"
 AVERAGE_AUM_URL = "https://www.amfiindia.com/api/average-aum-schemewise"
+TER_URL = "https://www.amfiindia.com/api/populate-te-rdata-revised"
+
+# The endpoint's own cap - a larger pageSize is silently clamped to this
+# rather than honoured or rejected.
+_TER_PAGE_SIZE = 100
 
 
 def fetch_navall() -> str:
@@ -47,3 +52,36 @@ def fetch_average_aum_schemewise(fy_id: int, period_id: int) -> list[dict]:
     )
     response.raise_for_status()
     return response.json()["data"]
+
+
+def fetch_ter_month(month: str) -> list[dict]:
+    """Every TER row AMFI has published for one calendar month - every
+    scheme, every day disclosed so far. month is "MM-YYYY", the API's own
+    format. There is no day-level filter (checked directly against the live
+    endpoint), so a caller wanting just one day still has to page through
+    the whole month and pick that day's rows back out."""
+    rows: list[dict] = []
+    page = 1
+
+    while True:
+        response = requests.get(
+            TER_URL,
+            params={
+                "MF_ID": "All",
+                "Month": month,
+                "strCat": -1,
+                "strType": -1,
+                "page": page,
+                "pageSize": _TER_PAGE_SIZE,
+            },
+            timeout=30,
+        )
+        response.raise_for_status()
+        body = response.json()
+        rows.extend(body["data"])
+
+        if page >= body["meta"]["pageCount"]:
+            break
+        page += 1
+
+    return rows

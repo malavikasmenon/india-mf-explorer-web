@@ -42,3 +42,27 @@ def aum_partition_path(period_start: date) -> Path:
         / f"year={period_start:%Y}"
         / f"{period_start:%Y-%m}.parquet"
     )
+
+
+def ter_partition_path(ter_date: date) -> Path:
+    return (
+        DATA_DIR
+        / "ter"
+        / f"year={ter_date:%Y}"
+        / f"month={ter_date:%m}"
+        / f"{ter_date:%Y-%m-%d}.parquet"
+    )
+
+
+def ter_month_path(year: int, month: int) -> Path:
+    return (
+        DATA_DIR
+        / "ter"
+        / f"year={year}"
+        / f"month={month:02d}"
+        / "history.parquet"
+    )
+
+
+def ter_year_path(year: int) -> Path:
+    return DATA_DIR / "ter" / f"year={year}" / "history.parquet"

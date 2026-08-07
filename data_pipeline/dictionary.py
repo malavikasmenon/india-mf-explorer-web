@@ -129,6 +129,25 @@ TABLES: dict[str, dict] = {
         ),
         "examples": [],
     },
+    "ter": {
+        "title": "TER",
+        "subtitle": "Daily total expense ratio for every scheme AMFI discloses it for.",
+        "grain": "One row per scheme per day.",
+        "description": (
+            "Total Expense Ratio (TER), as AMFI publishes it daily, split into the "
+            "Regular and Direct plan and further into its components: base expense ratio, "
+            "brokerage cost, transaction cost and statutory levies, which sum to the "
+            "headline *_ter figure. All values are annualized percentages.\n\n"
+            "This table stands alone - it cannot be joined to schemes, nav or aum. AMFI's "
+            "TER disclosure identifies schemes by NSDLSchemeCode, an identifier from a "
+            "different registry than the AMFI scheme_code the rest of this dataset is "
+            "keyed on; the two share no common column, only free-text scheme names that "
+            "are not reliable to match on. scheme_name/scheme_type/scheme_category are "
+            "kept here verbatim rather than looked up elsewhere, since there is nothing to "
+            "look them up against."
+        ),
+        "examples": [],
+    },
 }
 
 # Declared nullability, mirroring the CREATE TABLE in build_schemes.py. It is stated
@@ -147,6 +166,23 @@ NOT_NULL: dict[str, set[str]] = {
         "aum_excl_fof_domestic_incl_fof_overseas",
         "aum_fof_domestic",
     },
+    "ter": {
+        "nsdl_scheme_code",
+        "scheme_name",
+        "scheme_type",
+        "scheme_category",
+        "ter_date",
+        "regular_ber",
+        "regular_brokerage_cost",
+        "regular_transaction_cost",
+        "regular_statutory_levies",
+        "regular_ter",
+        "direct_ber",
+        "direct_brokerage_cost",
+        "direct_transaction_cost",
+        "direct_statutory_levies",
+        "direct_ter",
+    },
 }
 
 # The identifier, in order. Parquet cannot carry a primary key, so the catalog
@@ -156,6 +192,7 @@ PRIMARY_KEY: dict[str, list[str]] = {
     "schemes": ["scheme_code"],
     "nav": ["scheme_code", "nav_date"],
     "aum": ["scheme_code", "period"],
+    "ter": ["nsdl_scheme_code", "ter_date"],
 }
 
 COLUMNS: dict[str, dict[str, dict]] = {
@@ -259,6 +296,79 @@ COLUMNS: dict[str, dict[str, dict]] = {
         "aum_fof_domestic": {
             "description": "Average AUM for the quarter from domestic fund-of-funds assets, Rs Lakhs.",
             "source_field": "average-aum-schemewise AverageAumForTheMonth.FundOfFundsDomestic",
+        },
+    },
+    "ter": {
+        "nsdl_scheme_code": {
+            "description": (
+                "NSDL's scheme identifier - not AMFI's scheme_code, and not joinable to "
+                "it. The only identifier this source publishes."
+            ),
+            "source_field": "populate-te-rdata-revised NSDLSchemeCode",
+        },
+        "scheme_name": {
+            "description": "The scheme name as this source prints it, kept verbatim rather than looked up against schemes.",
+            "source_field": "populate-te-rdata-revised Scheme_Name",
+        },
+        "scheme_type": {
+            "description": "Open Ended, Close Ended, or Interval Fund, as this source prints it.",
+            "source_field": "populate-te-rdata-revised SchemeType_Desc",
+        },
+        "scheme_category": {
+            "description": "SEBI scheme category, as this source prints it.",
+            "source_field": "populate-te-rdata-revised SchemeCat_Desc",
+        },
+        "ter_date": {
+            "description": "The date this figure was disclosed for.",
+            "source_field": "populate-te-rdata-revised TER_Date",
+        },
+        "regular_ber": {
+            "description": "Base Expense Ratio, Regular plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised R_BER",
+        },
+        "regular_brokerage_cost": {
+            "description": "Brokerage cost, Regular plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised R_BrokerageCost",
+        },
+        "regular_transaction_cost": {
+            "description": "Transaction cost, Regular plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised R_TransactionCost",
+        },
+        "regular_statutory_levies": {
+            "description": "Statutory levies (GST etc.), Regular plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised R_StatutoryLevies",
+        },
+        "regular_ter": {
+            "description": (
+                "Total Expense Ratio, Regular plan - annualized percentage. The sum of "
+                "regular_ber, regular_brokerage_cost, regular_transaction_cost and "
+                "regular_statutory_levies."
+            ),
+            "source_field": "populate-te-rdata-revised R_TER",
+        },
+        "direct_ber": {
+            "description": "Base Expense Ratio, Direct plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised D_BER",
+        },
+        "direct_brokerage_cost": {
+            "description": "Brokerage cost, Direct plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised D_BrokerageCost",
+        },
+        "direct_transaction_cost": {
+            "description": "Transaction cost, Direct plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised D_TransactionCost",
+        },
+        "direct_statutory_levies": {
+            "description": "Statutory levies (GST etc.), Direct plan - annualized percentage.",
+            "source_field": "populate-te-rdata-revised D_StatutoryLevies",
+        },
+        "direct_ter": {
+            "description": (
+                "Total Expense Ratio, Direct plan - annualized percentage. The sum of "
+                "direct_ber, direct_brokerage_cost, direct_transaction_cost and "
+                "direct_statutory_levies."
+            ),
+            "source_field": "populate-te-rdata-revised D_TER",
         },
     },
 }

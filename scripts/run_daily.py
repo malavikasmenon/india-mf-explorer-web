@@ -1,5 +1,5 @@
-"""Fetch schemes, append today's NAV, compact closed months/years, and
-rebuild the manifest.
+"""Fetch schemes, append today's NAV, refresh TER, compact closed
+months/years, and rebuild the manifest.
 
 Meant to run daily, after AMFI has published NAVAll.txt for the day (see
 data_pipeline/clients/amfi.py). No arguments, no flags - the pipeline logic
@@ -15,9 +15,14 @@ from data_pipeline.manifest import build_manifest
 from data_pipeline.pipelines.nav_compaction import compact_nav, compact_nav_years
 from data_pipeline.pipelines.nav_daily import build_nav_daily
 from data_pipeline.pipelines.schemes import build_schemes
+from data_pipeline.pipelines.ter import build_ter
+from data_pipeline.pipelines.ter_compaction import compact_ter, compact_ter_years
 
 build_schemes()
 build_nav_daily()
+build_ter()
 compact_nav()
 compact_nav_years()
+compact_ter()
+compact_ter_years()
 build_manifest()
