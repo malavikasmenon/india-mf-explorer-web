@@ -6,6 +6,9 @@ data_pipeline/clients/amfi.py). No arguments, no flags - the pipeline logic
 lives in data_pipeline; this just calls it in order. Compaction runs before
 the manifest rebuild so the manifest's file list matches what's actually on
 disk afterward, not the pre-compaction layout.
+
+AUM is not refreshed here - AMFI publishes it once a quarter, not daily, so
+it runs on its own schedule (see run_weekly.py) instead of on this one.
 """
 
 from data_pipeline.manifest import build_manifest

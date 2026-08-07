@@ -112,6 +112,23 @@ TABLES: dict[str, dict] = {
         ),
         "examples": [],
     },
+    "aum": {
+        "title": "AUM",
+        "subtitle": "Average assets under management for every scheme, by quarter.",
+        "grain": "One row per scheme per quarter.",
+        "description": (
+            "Scheme-wise Average AUM (AAUM), as AMFI publishes it each quarter. Figures "
+            "are in Rs Lakhs, exactly as published - not converted to rupees or crores. "
+            "AMFI's own field names call this 'for the month', but the figure is the "
+            "quarter's average, not a monthly one. period is kept verbatim as AMFI prints "
+            "it (e.g. 'April - June 2026') rather than parsed into dates. Join to schemes "
+            "on scheme_code - though unlike nav, that join is not guaranteed to match: "
+            "schemes is a current snapshot of NAVAll.txt, so a scheme that closed or "
+            "matured after the quarter a row covers can appear here with no corresponding "
+            "row in schemes."
+        ),
+        "examples": [],
+    },
 }
 
 # Declared nullability, mirroring the CREATE TABLE in build_schemes.py. It is stated
@@ -124,6 +141,12 @@ NOT_NULL: dict[str, set[str]] = {
     # nav is deliberately absent from this set: a row whose NAV could not be
     # parsed is kept with NULL rather than dropped (see build_nav.py).
     "nav": {"scheme_code", "nav_date"},
+    "aum": {
+        "scheme_code",
+        "period",
+        "aum_excl_fof_domestic_incl_fof_overseas",
+        "aum_fof_domestic",
+    },
 }
 
 # The identifier, in order. Parquet cannot carry a primary key, so the catalog
@@ -132,6 +155,7 @@ NOT_NULL: dict[str, set[str]] = {
 PRIMARY_KEY: dict[str, list[str]] = {
     "schemes": ["scheme_code"],
     "nav": ["scheme_code", "nav_date"],
+    "aum": ["scheme_code", "period"],
 }
 
 COLUMNS: dict[str, dict[str, dict]] = {
@@ -211,6 +235,30 @@ COLUMNS: dict[str, dict[str, dict]] = {
                 "so that fact stays visible."
             ),
             "source_field": "mfapi data[].nav",
+        },
+    },
+    "aum": {
+        "scheme_code": {
+            "description": "AMFI's scheme identifier, and the join key to schemes.",
+            "source_field": "average-aum-schemewise AMFI_Code",
+        },
+        "period": {
+            "description": (
+                "The quarter this figure averages over, exactly as AMFI prints it "
+                "(e.g. 'April - June 2026') - not parsed into a date."
+            ),
+            "source_field": "average-aum-schemewise period",
+        },
+        "aum_excl_fof_domestic_incl_fof_overseas": {
+            "description": (
+                "Average AUM for the quarter, Rs Lakhs. Excludes domestic fund-of-funds "
+                "assets but includes overseas fund-of-funds assets, per AMFI's own split."
+            ),
+            "source_field": "average-aum-schemewise AverageAumForTheMonth.ExcludingFundOfFundsDomesticButIncludingFundOfFundsOverseas",
+        },
+        "aum_fof_domestic": {
+            "description": "Average AUM for the quarter from domestic fund-of-funds assets, Rs Lakhs.",
+            "source_field": "average-aum-schemewise AverageAumForTheMonth.FundOfFundsDomestic",
         },
     },
 }

@@ -30,3 +30,15 @@ def nav_month_path(year: int, month: int) -> Path:
 
 def nav_year_path(year: int) -> Path:
     return DATA_DIR / "nav" / f"year={year}" / "history.parquet"
+
+
+def aum_partition_path(period_start: date) -> Path:
+    # One file per quarter, named for the quarter's first month - AUM has no
+    # daily grain to compact the way nav does, so there is nothing finer to
+    # partition by.
+    return (
+        DATA_DIR
+        / "aum"
+        / f"year={period_start:%Y}"
+        / f"{period_start:%Y-%m}.parquet"
+    )
