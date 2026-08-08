@@ -11,6 +11,7 @@ import SqlEditor from './components/SqlEditor.vue';
 import ExampleQueries from './components/ExampleQueries.vue';
 import ResultsGrid from './components/ResultsGrid.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
+import AskAI from './components/AskAI.vue';
 import {
   completionSchema,
   fetchManifest,
@@ -151,6 +152,7 @@ async function run() {
       </div>
 
       <template v-else>
+        <AskAI v-if="manifest" :manifest="manifest" />
         <SqlEditor
           ref="editor"
           v-model="sql"

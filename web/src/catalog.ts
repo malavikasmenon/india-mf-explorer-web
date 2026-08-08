@@ -72,3 +72,25 @@ export function completionSchema(manifest: Manifest): Record<string, string[]> {
     manifest.tables.map((table) => [table.name, table.columns.map((c) => c.name)]),
   );
 }
+
+/**
+ * Render the catalog as plain text for an LLM prompt — DuckDB's own DDL
+ * dialect isn't the point here, just enough for a model to write a correct
+ * query: table, grain, and each column with its type and description.
+ */
+export function describeSchemaForPrompt(manifest: Manifest): string {
+  return manifest.tables
+    .map((table) => {
+      const head = `${table.name}${table.subtitle ? ` — ${table.subtitle}` : ''} (${table.row_count.toLocaleString()} rows)`;
+      const cols = table.columns
+        .map((c) => {
+          const bits = [c.name, c.type];
+          if (c.primary_key) bits.push('primary key');
+          if (c.description) bits.push(`-- ${c.description}`);
+          return `  ${bits.join(' ')}`;
+        })
+        .join('\n');
+      return `${head}\n${cols}`;
+    })
+    .join('\n\n');
+}
