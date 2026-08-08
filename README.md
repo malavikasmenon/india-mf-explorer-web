@@ -25,14 +25,14 @@ gatekeeping, so you can come to your own conclusions.
 - **SQL directly in the browser** against the full dataset using DuckDB-WASM, so queries run on your machine, not a server
 - Export the results of the query as a CSV or Parquet file. 
 
-Check this out at the explorer page on the website. [SQL Explorer](https://indian-financial-data-explorer.netlify.app/app)
+Check this out at the [explorer](https://indian-financial-data-explorer.netlify.app/app) page on the website.
 
 > **Note:** Ad blockers can prevent the DuckDB-WASM download from completing, so the page may not load. If it doesn't, try an incognito window first, or temporarily disable your ad blocker.
 
 
 ## Data
 
-All data for this tool is hosted publicly on this [repo](https://github.com/malavikasmenon/open-mf-data-india). The Github actions run at the set cadence to fetch the latest available data.
+All data for this tool is stored on this public [repo](https://github.com/malavikasmenon/open-mf-data-india). The Github actions run at the pre-set cadence to fetch the latest available data.
 
 Any information regarding the available tables, their schema and the corresponding sources can be found [here.](https://indian-financial-data-explorer.netlify.app/dictionary/)
 
