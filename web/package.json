@@ -6,7 +6,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "sync-data": "mkdir -p public/data && cp ../data/manifest.json public/data/ && rm -rf public/data/schemes public/data/nav && cp -R ../data/schemes ../data/nav public/data/",
+    "sync-data": "mkdir -p public/data && cp ../data/manifest.json public/data/ && rm -rf public/data/schemes public/data/nav public/data/aum public/data/ter && cp -R ../data/schemes ../data/nav ../data/aum ../data/ter public/data/",
     "dev": "npm run sync-data && vite",
     "build": "npm run sync-data && vue-tsc --noEmit && vite build",
     "build:prod": "vue-tsc --noEmit && vite build",
