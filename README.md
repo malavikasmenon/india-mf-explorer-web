@@ -2,9 +2,11 @@
 
 Query Indian mutual fund data like a database. No ETL, no signup, no API keys.
 
+Try it out at [indian-financial-data-explorer.netlify.app](https://indian-financial-data-explorer.netlify.app/).
+
 ## Why
 
-All of this data is already public — SEBI mandates its disclosure and AMFI publishes it regularly.What doesn't exist is a version that's already parsed, joined, documented, and queryable.
+All of this data is already public — SEBI mandates its disclosure and AMFI publishes it regularly. What doesn't exist is a version that's already parsed, joined, documented, and queryable.
 
 So everyone who wants to analyse Indian mutual funds writes the same scraper, stands up the same database, and repeats the same four hours of plumbing in private before they can ask their first question.
 
@@ -20,8 +22,12 @@ gatekeeping, so you can come to your own conclusions.
 
 ## What it will do
 
-- **SQL directly in the browser** against the full dataset — DuckDB-WASM, so
-  queries run on your machine, not a server
+- **SQL directly in the browser** against the full dataset using DuckDB-WASM, so queries run on your machine, not a server
+- Export the results of the query as a CSV or Parquet file. 
+
+Check this out at the explorer page on the website. [SQL Explorer](https://indian-financial-data-explorer.netlify.app/app)
+
+> **Note:** Ad blockers can prevent the DuckDB-WASM download from completing, so the page may not load. If it doesn't, try an incognito window first, or temporarily disable your ad blocker.
 
 
 ## Data
