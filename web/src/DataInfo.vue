@@ -51,6 +51,18 @@ const terCols: CardColumn[] = [
   { name: 'direct_ter', type: 'double' },
 ];
 
+interface GlossaryRow {
+  table: string;
+  def: string;
+}
+
+const glossary: GlossaryRow[] = [
+  { table: 'schemes', def: 'The master list of AMFI scheme codes, with their names and fund houses.' },
+  { table: 'nav', def: "Net Asset Value (NAV): What a scheme's unit is worth on a given day." },
+  { table: 'aum', def: 'Assets under Management (AUM): How much money a scheme manages in total, averaged over a quarter.' },
+  { table: 'ter', def: 'Total Expense Ratio (TER): What a scheme costs to run each year, as a percentage of your investment.' },
+];
+
 interface SourceRow {
   table: string;
   source: string;
@@ -191,6 +203,17 @@ const sources: SourceRow[] = [
             </tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="d-section">
+      <p class="label">Brief explainer for each table</p>
+
+      <div class="panel d-glossary">
+        <div v-for="g in glossary" :key="g.table" class="d-gloss-row">
+          <span class="mono d-gloss-term">{{ g.table }}</span>
+          <span class="d-gloss-def">{{ g.def }}</span>
+        </div>
       </div>
     </section>
   </main>
@@ -416,6 +439,34 @@ main {
 .d-cadence {
   color: var(--muted);
   white-space: nowrap;
+}
+
+.d-glossary {
+  display: flex;
+  flex-direction: column;
+}
+
+.d-gloss-row {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--line);
+}
+
+.d-gloss-row:last-child {
+  border-bottom: none;
+}
+
+.d-gloss-term {
+  flex: 0 0 64px;
+  font-weight: 700;
+}
+
+.d-gloss-def {
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 
 /* .footer/.foot-col aren't shared from App.vue — Vue's <style scoped> is
