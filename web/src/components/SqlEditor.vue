@@ -9,7 +9,7 @@
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { drawSelection, EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { autocompletion, completionKeymap } from '@codemirror/autocomplete';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -50,7 +50,7 @@ const theme = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: 'var(--surface)',
     border: 'none',
-    color: 'var(--line)',
+    color: 'var(--line-strong)',
     paddingRight: '10px',
     paddingLeft: '4px',
   },
@@ -75,6 +75,9 @@ function extensions(): Extension[] {
   return [
     lineNumbers(),
     history(),
+    // Without this, CodeMirror falls back to the browser's native caret,
+    // which ignores the theme's cursor color/width below entirely.
+    drawSelection(),
     syntaxHighlighting(highlight, { fallback: true }),
     autocompletion(),
     // DuckDB has no dedicated CodeMirror dialect; Postgres is the closest fit
