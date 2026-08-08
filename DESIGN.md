@@ -313,42 +313,6 @@ HDFC Balanced Advantage Fund - Growth Plan - Direct Plan
 Different position (before vs after the option), different casing, different
 wording. Forty-odd AMCs, no shared convention, and no field that states it.
 
----
-
-## 6. Licensing — unresolved, and it matters
-
-| Source | License | Position |
-|---|---|---|
-| `captn3m0/historical-mf-data` | **MIT** | Permits redistribution and derivative works. **But** per direct inspection it lacks fund type / category — those only exist in AMFI's section headers. So using it means joining MIT NAV history to an AMFI-sourced dimension table. |
-| `mfapi.in` | **none stated** | Free and unlimited, but no license and won't name its source. Awkward upstream for a provenance-first project. |
-| **AMFI direct** | **restrictive** | See below. |
-
-AMFI Terms of Use (`amfiindia.com/terms-of-use`), verbatim:
-
-> "…for your **personal and non-commercial use only**"
-> "You may not… publicly display, transmit, **publish**… anything available through the Site"
-> "You may not… modify, or **create derivative works** based on anything available through the Site"
-> "You shall **not store electronically any significant portion** of any part of the Site."
-
-**Counterweight** (not legal advice): NAV values are facts, and facts aren't
-copyrightable — India rejected sweat-of-the-brow in *Eastern Book Company v.
-D.B. Modak* (2008). India has no sui generis database right. AMFI's leverage is
-contract, not copyright. The data exists because SEBI mandates disclosure for
-investor transparency. Multiple projects (captn3m0, mfapi, mftool) have operated
-publicly for years.
-
-**Working resolution:**
-
-> **The licensing question is a *publishing* question, not a *development*
-> question.** Pulling a sample to build against is personal use. The terms bite
-> when you republish the archive. Do not let this block writing code.
-
-Before publishing: lead the product on the derived layer (your own computation,
-original work) rather than a raw mirror; and email AMFI for written approval —
-their clause says "without our written approval," which implies approval exists.
-
----
-
 ## 7. Architecture
 
 Total cost at this scale: effectively zero.

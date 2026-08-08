@@ -1,5 +1,7 @@
 2 tables
 
+<!-- Initial spec for Claude to collect data -->
+
 1. schemes - use amfii navall.txt to get the info about all schemes 
 2. nav daily - use mfapi /mf/latest endpoint. but to avoid dead schemes, just take the ones that has the date as the current day. this way you avoid adding funds that haven't been updated in a while
 3. nav backfill - use all scheme codes from the schemes table and use mfapi /mf/{scheme_code} endpoint to populate the nav history. this might take some time, but since its a one time activity, it is fine
