@@ -51,7 +51,7 @@ function openInEditor(example: TableExample) {
         <p class="label l-eyebrow">Free · open data · no signup</p>
         <h1>Indian mutual fund data,<br />queryable like a database.</h1>
         <p class="l-sub">
-          The scheme dimension and daily NAV history, sourced from AMFI and joined
+          The data regarding Indian mutual fund schemes, including their AUM, TER and daily NAV history, sourced from AMFI and joined
           for you. Ask one of these and open it straight in the editor, or go
           write your own.
         </p>
@@ -83,9 +83,10 @@ function openInEditor(example: TableExample) {
       <div>
         <p class="label">What this is</p>
         <p>
-          AMFI publishes mutual fund data publicly, but as a hierarchical text file
-          built for nobody to actually read. The good research tools charge for
-          access; the free ones want your phone number first.
+          AMFI publishes mutual fund data publicly, but as a hierarchical text file.
+          You still need to do a lot of work to ask it a question. The good
+          research tools are paid, and limited to major players in the finance
+          industry.
         </p>
         <p>
           This platform takes that raw public data, parses and joins it, and puts a
